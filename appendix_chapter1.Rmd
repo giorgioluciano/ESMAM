@@ -1,0 +1,178 @@
+---
+title: "Chapter 1"
+fig_caption: yes
+output:
+  pdf_document: 
+    keep_tex: true
+
+
+---
+
+Loading the required libraries (R studio will warn you about non-installed libraries)
+
+```{r load_libraries}
+require(multcomp)
+require(qqplotr)
+require(knitr)
+require(reshape2)
+
+```
+
+To load load the data-set (change your path according to the directory where you move the dataset)
+
+```{r load_data}
+load(file = "c:/temp/Epoxy.RData")
+```
+ 
+In order to see the structure of the data
+
+```{r check_data}
+str(all_data)
+```
+
+We can see that the data is a dataframe of four set A,B,C,D that represents the observation made by four laboratories on same variable
+Due to kind of object we are using in R (dataframe) we get the info that we have 36 observations in 4 variables)
+We calculate a statistical summary of our data 
+
+```{r summary_for_the_data}
+summary(all_data)
+```
+
+In order to calculate the variance
+
+```{r variance}
+var(all_data$A)
+var(all_data$B)
+var(all_data$C)
+var(all_data$D)
+```
+
+For a stem and lef plot
+
+```{r stem_and_leaf_plots}
+stem(all_data$A, scale = 1)
+stem(all_data$B, scale = 1)
+stem(all_data$C, scale = 1)
+stem(all_data$D, scale = 1)
+```
+
+Stripchart
+
+```{r ex1_stripchart, fig.width=4, fig.height=2}
+stripchart(all_data$A)
+stripchart(all_data$B)
+stripchart(all_data$C)
+stripchart(all_data$D)
+```
+
+Histogram
+
+```{r ex_1_histogram, fig.width=4, fig.height=4}
+hist(all_data$A)
+hist(all_data$B)
+hist(all_data$C)
+hist(all_data$D)
+```
+
+```{r ex1_box-whiskers, fig.width=4, fig.height=4}
+boxplot(all_data)
+```
+
+In order to report a qqplot
+
+```{r ex1_qq, fig.width=4, fig.height=4}
+qqnorm(all_data$A, pch = 1, frame = FALSE)
+qqline(all_data$A, col = "steelblue", lwd = 2)
+qqnorm(all_data$B, pch = 1, frame = FALSE)
+qqline(all_data$B, col = "steelblue", lwd = 2)
+qqnorm(all_data$C, pch = 1, frame = FALSE)
+qqline(all_data$C, col = "steelblue", lwd = 2)
+qqnorm(all_data$D, pch = 1, frame = FALSE)
+qqline(all_data$D, col = "steelblue", lwd = 2)
+```
+
+To calculate the z-scores
+
+```{r}
+za <- (all_data$A - mean(all_data$A)) / 
+  sd(all_data$A)
+zb <- (all_data$B - mean(all_data$B)) / 
+  sd(all_data$B)
+zc <- (all_data$C - mean(all_data$C)) /
+  sd(all_data$C)
+zd <- (all_data$D - mean(all_data$D)) /
+  sd(all_data$D)
+
+all_zscores <- data.frame(za,zb,zc,zd)
+
+```
+
+Example of a paired t-test
+
+```{r}
+library(broom)
+library(purrr)
+AB <- t.test(all_data$A, all_data$B)
+
+
+```
+Preparing the dataset for ANOVA
+
+```{r}
+all_melt<- data.frame(melt(all_data))
+
+```
+
+```{r}
+lab.mod = aov(value ~ variable, data = all_melt)
+summary(lab.mod)
+```
+
+Tukey Test
+
+```{r}
+tuk <- TukeyHSD(lab.mod)
+tuk
+```
+
+In order to show another example of anova with different
+models we load the other dataset
+
+```{r}
+load(file = "c:/temp/Hu_anova.RData")
+hu_melt=data.melt
+```
+
+Considering the variables indipendend
+
+
+```{r}
+library(multcomp)
+res.aov2 <- aov(value ~ label.a +
+                  label.conc, data = hu_melt)
+summary(res.aov2)
+
+multg <- summary(glht(res.aov2, 
+                      linfct = mcp(label.conc = "Tukey")))
+
+```
+
+Two way anova with interaction 
+
+```{r ex1_anova_HU_res , fig.width=5, fig.height=5}
+res.aov3 <- aov(value ~ label.a *label.conc,
+                data =  hu_melt)
+summary(res.aov3)
+
+
+tuc.aov3 <- TukeyHSD(res.aov3)
+tuc.aov3
+
+par(mfrow=c(2,2))
+plot(res.aov3)
+
+aov_residuals <- residuals(object = res.aov3)
+
+```
+
+

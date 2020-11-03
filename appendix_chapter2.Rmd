@@ -1,0 +1,215 @@
+---
+title: "Chapter 2"
+fig_caption: yes
+output:
+  pdf_document: 
+    keep_tex: true
+
+
+---
+Loading the required libraries (R studio will warn you about non-installed libraries)
+
+
+```{r load_libraries}
+library(knitr)
+library(qqplotr)
+library(reshape2)
+library(FrF2)
+library(rsm)
+```
+
+To load the data-set
+
+```{r load_data}
+load(file =  "c:/temp/Emagma.RData")
+```
+ 
+Create the coded data
+
+```{r create_coded_data_emagma}
+doe <- data.frame(EMAGMA,CE,Screw.speed,is)
+doe$x1 <- (doe$EMAGMA-mean(doe$EMAGMA))/5
+doe$x2 <- (doe$CE-mean(doe$CE))/0.25
+doe$x3 <- (doe$Screw.speed-mean(doe$Screw.speed))/50
+doe11 <- doe[doe$EMAGMA!=15,]
+doe22 <- doe11[doe11$CE!=0.25,]
+```
+
+Computing the scaled variance function for a 
+design, based on a first order model
+
+```{r scaled_variance_emagma_FO, fig.width=4, fig.height=4}
+par(mfrow=c(1,1))
+varfcn(doe, ~ FO(x1,x2,x3), contour = TRUE) 
+```
+Computing the scaled variance function for a design, based on a first order model with cross products
+
+```{r scaled_variance_emagma_SO,  fig.width=4, fig.height=4}
+par(mfrow=c(1,1))
+varfcn(doe, ~ FO(x1,x2,x3)+TWI(x1,x2,x3), contour = TRUE)  
+```
+
+Computing the model and reporting the summary 
+```{r rsm_model_EMAGMA,  fig.width=5, fig.height=5}
+mod = rsm(is ~ FO(x1,x2,x3)+TWI(x1,x2,x3), data=doe)
+summary(mod)
+```
+
+Diagnostic plot for the model
+
+```{r rsm_model_EMAGMA_plot,  fig.width=4, fig.height=4}
+par(mfrow=c(2,2))
+plot(mod)
+```
+
+If you need a full factorial design you can rely 
+on this syntax is for a full Factorial n=2 2 levels
+```{r full_factorial2x2}
+expand.grid(A = c("+", "-"), B = c("+", "-"))
+```
+of full Factorial n=3 with two levels
+```{r full_factorial3x3}
+expand.grid(A = c("+", "-"),
+            B = c("+", "-"), C = c("+", "-"))
+```
+For fractional factorial you can use the command
+```{r}
+FrF2(nruns=8,nfactors=4)
+```
+And forPlackett-Burman
+```{r}
+pb(8)
+```
+
+For the Dataset OPT CABLES
+
+```{r OPT_cables}
+
+#setup lower (min = minus, "-") and higher(plus, "+") 
+#and zero, for the factor
+Amin = 0.025
+Aplus = 0.050
+Bmin = 170
+Bplus  = 190
+Azero  = 0.0375
+Bzero = 180
+stepB=10
+stepA=0.0125
+
+#response
+p1 <- 1130
+a <- 1078
+b <- 1398
+ab <- 1320
+#
+A0<- c(Amin,Aplus,Amin,Aplus)
+B0 <- c(Bmin,Bmin,Bplus,Bplus)
+y0 <- c(p1, a,b,ab)
+block0 <- rep(1,length(A0))
+doe0 <- data.frame(A0,B0,y0,block0)
+colnames(doe0) <- c("A","B","y","block")
+
+sumcoeff=4 #sum of the coefficients of the model 
+rep=1 #number of replicate
+Ahat <-  (a+ab)/2 - (p1+b)/2
+Bhat <-  (b+ab)/2 - (p1+a)/2
+ABhat <- (ab+p1)/2 -(a+b)/2
+b1=Ahat/2
+b2=Bhat/2
+b12=ABhat/2
+AC <- a+ab-p1-b
+BC <- b+ab-p1-a
+ABC <- ab+p1-a-b
+#calculation of the sum of squares
+SSA=(Ahat^2)/(sumcoeff*rep)
+SSB=(Bhat^2)/(sumcoeff*rep)
+SSAB=(ABhat)^2/(sumcoeff*rep)
+```
+
+Summary model 4 points dataset CABLE OPT
+```{r model_opt_cables_4points }
+coded.doe0 <- coded.data(doe0,
+                         x1~(B-Bzero)/stepB,
+                         x2~(A-Azero)/stepA)
+mod0 = rsm(y ~(FO(x1,x2)+TWI(x1,x2)), data=coded.doe0)
+summary(mod0)
+```
+
+Adding one central point
+
+```{r model_opt_cables_5points}
+p0=c(1205,1200,1195)
+A1<- c(Amin,Aplus,Azero,Azero,Azero,Amin,Aplus)
+B1 <- c(Bmin,Bmin,Bzero,Bzero,Bzero,Bplus,Bplus)
+y1 <- c(p1, a, p0,b,ab)
+block1 <- rep(1,length(A1))
+doe1 <- data.frame(A1,B1,y1,block1)
+colnames(doe1) <- c("A","B","y","block")
+coded.doe1 <- coded.data(doe1, x1~(B-Bzero)/stepB, 
+                         x2~(A-Azero)/stepA)
+mod1 = rsm(y ~(FO(x1,x2)+TWI(x1,x2)), data=coded.doe1)
+summary(mod1)
+
+```
+
+
+Diagnostic plots for model with central points for the dataset
+
+```{r plot_cable_central, echo=FALSE, message=FALSE, warning=FALSE, fig.width=5, fig.height=5}
+par(mfrow=c(2,2))
+plot(mod1)
+```
+
+Plot of the interactions for model with central points
+
+```{r plot_opt_cables_interactions, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=4, fig.height=4}
+par(mfrow=c(1,1))
+contour(mod1, ~ x1 + x2, image = FALSE,
+        at = summary(mod1)$canonical$xs,
+        labcex=1.2, 
+        xlabs=c("Mold T (°C)","Pulling Speed (m/s)"))
+```
+
+```{r  plot_opt_cables_interactions2, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+par(mfrow=c(1,1))
+persp(mod1, ~ x1 + x2,
+      at = summary(mod1)$canonical$xs,
+      contours = "black", zlab = "Tensile Strength (MPa)",
+      xlabs = c("Mold Temp (°C)", "Speed (m/s)"),
+      cex.lab = 1, ticktype="simple")
+```
+
+Second order for dataset with central point
+
+```{r model_cable_seconorder}
+mod1q = rsm(y ~(FO(x1,x2)+TWI(x1,x2)+SO(x1,x2)),
+            data=coded.doe1)
+summary(mod1q)
+
+```
+
+Dataset Faria with replicates
+
+```{r model_cable_faria, load_data}
+load(file =  "c:/temp/Faria2016.RData")
+mod3 = rsm(y ~(FO(x1,x2)+TWI(x1,x2)+SO(x1,x2)),
+           data=coded.doe3)
+```
+
+
+Plot of the interactions Faria
+
+```{r plot_model_cable_faria, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+par(mfrow=c(2,2))
+plot(mod3)
+```
+
+```{r  plot_model_cable_faria_2,  echo=FALSE, message=FALSE, warning=FALSE,  fig.width=4, fig.height=4}
+
+par(mfrow=c(1,1))
+contour(mod3, ~ x1 + x2, 
+        image = FALSE, at = summary(mod3)$canonical$xs,
+        labcex=1.2, 
+        xlabs=c("Mold T (°C)","Pulling Speed (m/s)"))
+
+```

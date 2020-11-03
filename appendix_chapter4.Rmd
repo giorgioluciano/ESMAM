@@ -1,0 +1,399 @@
+---
+title: "Chapter 4"
+output:
+  pdf_document: 
+    keep_tex: yes
+  html_notebook: default
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(errors)
+library(pander)
+library(kableExtra)
+library(dplyr)
+library(outliers)
+library(purrr)
+library(ggplot2)
+library(gridExtra)
+library(ggthemes)
+library(qqplotr)
+library(ggpubr)
+library(reshape2)
+library(multcomp)
+library(car)
+library(gridExtra)
+library(data.table)
+library(ggplot2)
+library("FactoMineR")
+library("factoextra")
+library(zoo)
+library(dplyr)
+library(reshape2)
+library(GGally)
+library(ggcorrplot)
+library(latex2exp)
+library(broom)
+library(stargazer)
+
+#themes for ggplot
+theme_Publication <- function(base_size=14) {
+      library(grid)
+      library(ggthemes)
+      (theme_foundation(base_size=base_size)
+       + theme(plot.title = element_text(face = "bold",
+                                         size = rel(1.2), hjust = 0.5),
+               text = element_text(),
+               panel.background = element_rect(colour = NA),
+               plot.background = element_rect(colour = NA),
+               panel.border = element_rect(colour = NA),
+               axis.title = element_text(face = "bold",size = rel(1)),
+               axis.title.y = element_text(angle=90,vjust =2),
+               axis.title.x = element_text(vjust = -0.2),
+               axis.text = element_text(), 
+               axis.line = element_line(colour="black"),
+               axis.ticks = element_line(),
+               panel.grid.major = element_line(colour="#f0f0f0"),
+               panel.grid.minor = element_blank(),
+               legend.key = element_rect(colour = NA),
+               legend.position = "bottom",
+               legend.direction = "horizontal",
+               legend.key.size= unit(0.2, "cm"),
+               legend.title = element_text(face="italic"),
+               plot.margin=unit(c(10,5,5,5),"mm"),
+               strip.background=element_rect(colour="#f0f0f0",fill="#f0f0f0"),
+               strip.text = element_text(face="bold")
+          ))
+      
+}
+
+theme_blank <- function(base_size=14) {
+      library(grid)
+      library(ggthemes)
+      (theme_foundation(base_size=base_size)
+       + theme(plot.title = element_text(face = "bold",
+                                         size = rel(1.2), hjust = 0.5),
+               text = element_text(),
+               panel.background = element_rect(colour = NA),
+               plot.background = element_rect(colour = NA),
+               axis.line=element_blank(),
+               axis.text.x=element_blank(),
+               axis.text.y=element_blank(),
+               axis.ticks=element_blank(),
+               axis.title.y=element_blank(),
+               panel.border=element_blank(),
+               panel.grid.major=element_blank(),
+               panel.grid.minor=element_blank(),
+               legend.key = element_rect(colour = NA),
+               legend.position = "bottom",
+               legend.direction = "horizontal",
+               legend.key.size= unit(0.2, "cm"),
+               legend.title = element_text(face="italic"),
+               plot.margin=unit(c(10,5,5,5),"mm"),
+               strip.background=element_rect(colour="#f0f0f0",fill="#f0f0f0"),
+               strip.text = element_text(face="bold")
+          ))
+      
+}
+
+
+scale_fill_Publication <- function(...){
+      library(scales)
+      discrete_scale("fill","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
+
+}
+
+scale_colour_Publication <- function(...){
+      library(scales)
+      discrete_scale("colour","Publication",manual_pal(values = c("#386cb0","#fdb462","#7fc97f","#ef3b2c","#662506","#a6cee3","#fb9a99","#984ea3","#ffff33")), ...)
+
+}
+
+#function multisim for replicating spectra adding noise
+
+multi_ssim <- function(csv,n=1,maxW=3800,minw=550,res=200,my.label="a",safe=10,my.var=0.01){
+seed=42
+wav.num <- (maxW-minw)
+csv.res <- approx(csv$V1,csv$V2,xout=seq(minw+safe,maxW-safe))
+a0 <- data.frame(csv.res$x)
+colnames(a0) <- c("wavelength")
+y0 <- data.frame(csv.res$y)
+colnames(y0) <- c("sample")
+repy <- do.call("cbind", replicate(n, y0, simplify = FALSE))
+colnames(repy) <- make.names(colnames(repy), unique = TRUE)
+#example  sd=abs((min(na.omit(y0))+0.0000000001)*my.var)
+rep.noise <- do.call("cbind", replicate(n, rnorm(prod(dim(y0)),sd=my.var), simplify = FALSE))	
+colnames(rep.noise) <- make.names(colnames(rep.noise), unique = TRUE)
+#my.label.group <- rep(my.label,wav.num)
+dt <- data.table(repy+rep.noise)
+return(dt)}
+
+
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+
+
+conc <- c(0,0.05,0.1,0.15,0.20,0.25,0.30,0.35)
+CNT.content <-rep(conc,6)
+dd <-c(rep(200,8),rep(210,8),rep(220,8),rep(230,8),rep(240,8),rep(250,8))
+compressive.strength <- c(0.25,0.28,0.29,0.32,0.33,0.36,0.34,0.32,0.26,0.29,0.33,0.34,0.36,0.39,0.37,0.35,0.32,0.36,0.38,0.43,0.48,0.45,0.42,0.38,0.37,0.40,0.41,0.43,0.44,0.49,0.47,0.44,0.38,0.43,0.44,0.49,0.55,0.53,0.51,0.46,0.40,0.46,0.50,0.54,0.60,0.55,0.53,0.49)
+porosity <- c(71.55,71.50,71.49,71.45,71.43,71.40,71.41,71.42,       71.54,71.49,71.44,71.43,71.39,71.32,71.38,71.39,71.43,71.40,71.38,71.32,71.29,71.29,71.34,71.33,71.38,71.36,71.36,71.34,71.32,71.27,71.26,71.28,71.35,71.33,71.32,71.28,71.20,71.20,71.21,71.24,71.33,71.30,71.26,71.20,71.16,71.20,71.21,71.26)
+air.void <- c(546.5,514.6,489.2,445.8,417.3,394.1,391.7,403.9,543.6,485.2,459.3,418.9,312.6,329.4,376.7,388.3,412.8,393.5,377.4,328.9,316.3,315.9,334.7,336.4,374.8,365.9,367.4,335.0,326.8,287.1,285.3,294.9,344.8,327.2,329.5,294.8,206.3,205.9,224.7,238.2,323.5,307.2,259.4,198.5,183.6,191.7,212.6,295.5)
+
+
+CNT <- CNT.content
+cs <- compressive.strength 
+por <- porosity
+av <- air.void
+
+nano.df <- data.frame(dd,CNT,por,av,cs)
+save(nano.df,CNT,cs,por,av, file = "c:/temp/El_extend.RData")
+
+load(file = "c:/temp/El_extend.RData")
+
+#kable(nano.df, format="latex")
+```
+
+#All Spectra
+
+```{r ex4_nano_mod1, echo=FALSE, message=FALSE, warning=FALSE,  fig.width=4, fig.height=4}
+pp <- ggplot(nano.df, aes(x = por, y = cs)) +
+  geom_point() +
+ geom_smooth(method='lm', formula= y~x) +
+  theme_classic()+xlab("porosity (%)")+ylab("Compresisve Strenght (MPa)")
+```
+
+
+```{r}
+pp
+model1 <- lm(por ~ cs, data = nano.df)
+summary(model1)
+```
+
+
+```{r  ex4_nano_mod2,  echo=FALSE, message=FALSE, warning=FALSE,  fig.width=4, fig.height=4}
+p2 <- ggplot(nano.df, aes(x = av, y = cs)) +
+  geom_point() + geom_smooth(method='lm', formula= y~x) +
+  theme_classic() +xlab(TeX("Air Void size ($\\mu$m)"))+
+  ylab("Compresisve Strenght (MPa)")
+
+p2 
+model2 <- lm(av ~ cs, data = nano.df)
+summary(model2)
+```
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+nano200 <- nano.df[nano.df$dd==200,]
+nano210 <- nano.df[nano.df$dd==210,]
+nano220 <- nano.df[nano.df$dd==220,]
+nano230 <- nano.df[nano.df$dd==230,]
+nano240 <- nano.df[nano.df$dd==240,]
+nano250 <- nano.df[nano.df$dd==250,]
+
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+nano200_pc_m <- lm(cs ~ por + CNT, data = nano200)
+nano210_pc_m <- lm(cs ~ por + CNT, data = nano210)
+nano220_pc_m <- lm(cs ~ por + CNT, data = nano220)
+nano230_pc_m <- lm(cs ~ por + CNT, data = nano230)
+nano240_pc_m <- lm(cs ~ por + CNT, data = nano240)
+nano250_pc_m <- lm(cs ~ por + CNT, data = nano250)
+
+nano200_av_m <- lm(cs ~ por + av, data = nano200)
+nano210_av_m <- lm(cs ~ por + av, data = nano210)
+nano220_av_m <- lm(cs ~ por + av, data = nano220)
+nano230_av_m <- lm(cs ~ por + av, data = nano230)
+nano240_av_m <- lm(cs ~ por + av, data = nano240)
+nano250_av_m <- lm(cs ~ por + av, data = nano250)
+
+
+nano200_CNT_m <- lm(cs ~ por + av + CNT , data = nano200)
+nano210_CNT_m <- lm(cs ~ por + av + CNT , data = nano210)
+nano220_CNT_m <- lm(cs ~ por + av + CNT , data = nano220)
+nano230_CNT_m <- lm(cs ~ por + av + CNT , data = nano230)
+nano240_CNT_m <- lm(cs ~ por + av + CNT , data = nano240)
+nano250_CNT_m <- lm(cs ~ por + av + CNT , data = nano250)
+
+```
+
+#Create test and train set
+
+```{r message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+library(pls)
+data(gasoline)
+gasTrain <- gasoline[1:50,]
+gasTest <- gasoline[51:60,]
+
+```
+
+#PCR model
+
+```{r  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+gas1pcr <- pcr(octane ~ NIR, ncomp = 10, 
+               data = gasTrain, validation = "LOO") 
+summary(gas1pcr)
+```
+
+
+#Plots PCR models
+
+
+##explained variance
+
+```{r ex4_pcr_RMSEP,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(RMSEP(gas1pcr), legendpos = "topright")
+```
+
+
+##number of components
+```{r ex4_pcr_pred,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pcr, ncomp = 2, asp = 1, line = TRUE,main="")
+```
+
+##plot of scores
+
+```{r ex4_pcr_scores,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pcr, plottype = "scores", comps = 1:3)
+```
+
+##plot of loadings
+```{r ex4_pcr_loadings,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pcr, "loadings", comps = 1:2, legendpos = "topleft",
+     labels = "numbers", xlab = "nm")
+```
+
+##explained variance
+
+```{r  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+explvar(gas1pcr)
+```
+
+##PCR prediction
+```{r ex4_pcr_comp_test,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+predict(gas1pcr, ncomp = 2, newdata = gasTest)
+predplot(gas1pcr, ncomp = 2, newdata = gasTest,
+         asp = 1, line = TRUE,main="")
+```
+
+
+#PLS model
+
+
+```{r ex4_pls_comp_test,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+gas1pls <- plsr(octane ~ NIR, ncomp = 10, data = gasTrain, validation = "LOO")
+summary(gas1pls)
+```
+
+
+#Plot PLS models
+
+
+##explained variance
+
+```{r ex4_pls_RMSEP_1,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(RMSEP(gas1pls), legendpos = "topright")
+```
+
+
+##number of components
+```{r ex4_pls_ncomp,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pls, ncomp = 2, asp = 1, line = TRUE,main="")
+```
+
+##scores plot
+```{r ex4_pls_scores,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pls, plottype = "scores", comps = 1:3)
+```
+
+##loadings plot
+```{r ex4_pls_loadings, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas1pls, "loadings", comps = 1:2, 
+     legendpos = "topleft",labels = "numbers", xlab = "nm")
+```
+
+##explained variance
+```{r ex4_pls_variance,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+explvar(gas1pls)
+```
+
+##pls prediction
+```{r ex4_pls_pred,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+predict(gas1pls, ncomp = 2, newdata = gasTest)
+predplot(gas1pls, ncomp = 2, newdata = gasTest, 
+         asp = 1, line = TRUE,main="")
+
+```
+
+#PLS after MSC 
+
+```{r  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+gas2 <- plsr(octane ~ msc(NIR), ncomp = 10, data = gasTrain,
+             validation = "LOO")
+predict(gas2, ncomp = 3, newdata = gasTest)
+```
+
+```{r ex4_pls_pred_msc, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas2, ncomp = 2, asp = 1, line = TRUE,main="")
+```
+
+#Plot PLS msc models
+
+
+##explained variance
+
+```{r ex4_pls_RMSEP,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(RMSEP(gas2), legendpos = "topright")
+```
+
+
+#methods of selection for number of components
+
+##onesigma
+```{r ex4_pls_msc,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+ncomp.onesigma <- selectNcomp(gas2,
+                  method = "onesigma", plot = TRUE,ylim = c(.18, .6))
+```
+
+#number of permutation
+```{r ex4_pls_msc_2,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+ncomp.permut <- selectNcomp(gas2, method = "randomization",
+                            plot = TRUE, ylim = c(.18, .6))
+```
+
+```{r ex4_pls_cross_val,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+gas2.cv <- crossval(gas2, segments = 10)
+plot(MSEP(gas2.cv), legendpos="topright")
+summary(gas2.cv, what = "validation")
+
+#Load a data set comprising spectral intensities of 60 samples of gasoline at 
+#401 wavelengths, and their octane #ratings. These data are described 
+#in Kalivas, John H., "Two Data Sets of Near Infrared Spectra," Chemometrics 
+#and Intelligent Laboratory Systems, v.37 (1997) pp.255-259
+```
+
+
+#scores plot
+```{r ex4_pls_msc_scores,  message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas2, plottype = "scores", comps = 1:3)
+```
+
+#loadings plot
+```{r ex4_pls_msc_loadings, message=FALSE, warning=FALSE,  fig.width=5, fig.height=5}
+plot(gas2, "loadings", comps = 1:2, legendpos = "topleft",xaxt="n", xlab = "nm")
+axis(1, at=c(51,151,251,351), labels=c("1000","1200","1400","1600"))
+```
+
+
+
+
+
+
+
+
