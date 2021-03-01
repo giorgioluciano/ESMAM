@@ -150,9 +150,10 @@ por <- porosity
 av <- air.void
 
 nano.df <- data.frame(dd,CNT,por,av,cs)
-save(nano.df,CNT,cs,por,av, file = "c:/temp/El_extend.RData")
-
-load(file = "c:/temp/El_extend.RData")
+#save(nano.df,CNT,cs,por,av, file = "c:/temp/El_extend.RData")
+#
+#add here your file with complete path
+load(file = "C:/temp//El_extend.RData")
 
 #kable(nano.df, format="latex")
 ```

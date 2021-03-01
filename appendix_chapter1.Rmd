@@ -21,7 +21,7 @@ require(reshape2)
 To load load the data-set (change your path according to the directory where you move the dataset)
 
 ```{r load_data}
-load(file = "c:/temp/Epoxy.RData")
+load(file = "C:/temp/Epoxy.rdata")
 ```
  
 In order to see the structure of the data
@@ -139,7 +139,7 @@ In order to show another example of anova with different
 models we load the other dataset
 
 ```{r}
-load(file = "c:/temp/Hu_anova.RData")
+load(file = "E:/temp/test/ESMAM-main/Hu_anova.RData")
 hu_melt=data.melt
 ```
 

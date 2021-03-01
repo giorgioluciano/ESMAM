@@ -18,10 +18,10 @@ library(FrF2)
 library(rsm)
 ```
 
-To load the data-set
+To load the data-set (change your path depending on your system)
 
 ```{r load_data}
-load(file =  "c:/temp/Emagma.RData")
+load(file =  "C:/temp/Emagma.RData")
 ```
  
 Create the coded data
@@ -191,7 +191,7 @@ summary(mod1q)
 Dataset Faria with replicates
 
 ```{r model_cable_faria, load_data}
-load(file =  "c:/temp/Faria2016.RData")
+load(file =  "E:/temp/test/ESMAM-main/Faria2016.RData")
 mod3 = rsm(y ~(FO(x1,x2)+TWI(x1,x2)+SO(x1,x2)),
            data=coded.doe3)
 ```
